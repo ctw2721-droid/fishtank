@@ -3,37 +3,154 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D 模型測試</title>
+  <title>智能魚缸 3D 監控</title>
 
-  <!-- 引入 Google 官方 3D 檢視元件 -->
+  <!-- 1. 引入 3D 模型檢視器語法 -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
+  <!-- 2. 引入 Firebase 語法 -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
   <style>
-    body, html { 
-      margin: 0; 
-      padding: 0; 
-      width: 100%; 
-      height: 100%; 
-      overflow: hidden; 
-      background-color: #eef2f5; 
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #eef2f5; font-family: sans-serif; }
+    model-viewer { width: 100%; height: 100%; }
+
+    /* 3D 模型上面的 Hotspot 按鈕樣式 */
+    .Hotspot {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: background 0.2s, transform 0.2s;
     }
-    model-viewer {
-      width: 100%;
-      height: 100%;
+    .Hotspot:active { background: #0056b3; transform: scale(0.95); }
+
+    /* 點擊按鈕後彈出的數據視窗 */
+    .data-popup {
+      display: none; /* 預設隱藏 */
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 20, 0.88);
+      color: white;
+      padding: 15px 22px;
+      border-radius: 12px;
+      text-align: center;
+      z-index: 100;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      min-width: 220px;
     }
+    .popup-title { font-size: 15px; font-weight: bold; color: #00e5ff; margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; }
+    .popup-value { font-size: 16px; color: #ffffff; margin-top: 6px; }
   </style>
 </head>
 <body>
 
-  <!-- 3D 展示區 -->
-  <!-- 注意：src 裡面的檔名要跟你資料夾內的 3D 檔名完全一模一樣 -->
+  <!-- 3D 檢視器 -->
   <model-viewer 
     src="fishtank.glb" 
-    alt="3D 模型" 
+    alt="3D 魚缸模型" 
     camera-controls 
     auto-rotate 
     shadow-intensity="1">
+
+    <!-- 按鈕 1：對應你點擊的第一個位置 (hotspot-4) -->
+    <button class="Hotspot" slot="hotspot-4" 
+      data-position="-0.010191755613542935m 0.10093541499130976m 0.03105941947413131m" 
+      data-normal="-0.004096846572960706m 0.9503509426195306m -0.3111531804599267m" 
+      data-visibility-attribute="visible" 
+      onclick="showData('bask_temp')">
+      ☀️ 曬台溫度
+    </button>
+
+    <!-- 按鈕 2：對應你點擊的第二個位置 (hotspot-5) -->
+    <button class="Hotspot" slot="hotspot-5" 
+      data-position="0.032999235605824184m 0.11660087208074732m -0.032094734037154675m" 
+      data-normal="0.0031711902879639786m -0.007693965257198799m -0.9999653726258618m" 
+      data-visibility-attribute="visible" 
+      onclick="showData('fan_humidity')">
+      🌀 風扇 & 濕度
+    </button>
+
+    <!-- 按鈕 3：對應你點擊的第三個位置 (hotspot-7) -->
+    <button class="Hotspot" slot="hotspot-7" 
+      data-position="-0.01936004637642777m 0.007001865183448641m -0.02091115585370021m" 
+      data-normal="-0.07950776142264725m 0.9946358544422366m -0.06616670561182332m" 
+      data-visibility-attribute="visible" 
+      onclick="showData('room_temp')">
+      🌡️ 室溫
+    </button>
+
   </model-viewer>
+
+  <!-- 點擊 Hotspot 後跳出的 Firebase 數據卡片 -->
+  <div id="popup" class="data-popup" onclick="this.style.display='none'">
+    <div id="popup-title" class="popup-title">數據讀取中</div>
+    <div id="popup-content" class="popup-value">載入中...</div>
+    <div style="font-size:10px; color:#aaa; margin-top:8px;">(按一下視窗關閉)</div>
+  </div>
+
+  <script>
+    // 3. 連線至你的 Firebase Realtime Database
+    const firebaseConfig = {
+      databaseURL: "https://esp-test-4384d-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let aquariumData = null;
+    let currentDataType = '';
+
+    // 4. 即時監聽 aquarium 節點
+    db.ref('/aquarium').on('value', (snapshot) => {
+      aquariumData = snapshot.val();
+      if (document.getElementById('popup').style.display === 'block') {
+        updatePopupUI();
+      }
+    });
+
+    // 5. 點擊不同 Hotspot 顯示對應數據
+    function showData(type) {
+      currentDataType = type;
+      document.getElementById('popup').style.display = 'block';
+      updatePopupUI();
+    }
+
+    // 根據點擊的按鈕更新視窗內容
+    function updatePopupUI() {
+      const titleEl = document.getElementById('popup-title');
+      const contentEl = document.getElementById('popup-content');
+
+      if (!aquariumData) {
+        contentEl.innerText = '等待 Firebase 數據中...';
+        return;
+      }
+
+      if (currentDataType === 'sand_temp') {
+        titleEl.innerText = '☀️ 曬台溫度感應器';
+        contentEl.innerHTML = `<span style="font-size:24px; color:#00e5ff; font-weight:bold;">${aquariumData.bask_temp ?? '--'}</span> °C`;
+      } 
+      else if (currentDataType === 'fan_status') {
+        titleEl.innerText = '🌀 風扇狀態';
+        contentEl.innerHTML = `
+          環境濕度：<b style="color:#00e5ff">${aquariumData.humidity ?? '--'} %</b><br>
+          風扇狀態：<b style="color:#00e5ff">${aquariumData.fan_status ?? '--'}</b>
+        `;
+      } 
+      else if (currentDataType === 'water_outlet') {
+        titleEl.innerText = '🌡️ 房間溫度';
+        contentEl.innerHTML = `<span style="font-size:24px; color:#00e5ff; font-weight:bold;">${aquariumData.room_temp ?? '--'}</span> °C`;
+      }
+    }
+  </script>
 
 </body>
 </html>
