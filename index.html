@@ -177,9 +177,9 @@
         return;
       }
 
-      if (window.currentDataType === 'bask_temp') {
-        titleEl.innerText = '☀️ 曬台溫度感應器';
-        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${data.bask_temp ?? '--'}</span> °C`;
+      if (window.currentDataType === 'water_outlet') {
+        titleEl.innerText = '☀️ 出水口溫度感應器';
+        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${data.water_outlet ?? '--'}</span> °C`;
       } 
       else if (window.currentDataType === 'fan_humidity') {
         titleEl.innerText = '🌀 風扇與濕度狀態';
@@ -188,9 +188,9 @@
           風扇狀態：<b style="color:#00e5ff">${data.fan_status ?? '--'}</b>
         `;
       } 
-      else if (window.currentDataType === 'room_temp') {
-        titleEl.innerText = '🌡️ 房間溫度感應器';
-        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${data.room_temp ?? '--'}</span> °C`;
+      else if (window.currentDataType === 'sand_temp') {
+        titleEl.innerText = '🌡️底沙溫度感應器';
+        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${data.sand_temp ?? '--'}</span> °C`;
       }
     }
   </script>
