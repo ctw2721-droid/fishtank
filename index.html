@@ -124,11 +124,16 @@
     <div style="font-size:11px; color:#aaa; margin-top:8px;">(按一下視窗關閉)</div>
   </div>
 
-  <script>
-    // 3. 設定 Firebase 連線資訊
+ <script>
+    // 1. Firebase 連線設定
     const firebaseConfig = {
       apiKey: "AIzaSyBoZQ6UmtmXsDA2M187cvbmv_zQ3dlbiEw",
-      databaseURL: "https://esp-test-4384d-default-rtdb.asia-southeast1.firebasedatabase.app"
+      authDomain: "esp-test-4384d.firebaseapp.com",
+      databaseURL: "https://esp-test-4384d-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "esp-test-4384d",
+      storageBucket: "esp-test-4384d.firebasestorage.app",
+      messagingSenderId: "759658685444",
+      appId: "1:759658685444:web:890097fdfb06af62184151"
     };
 
     // 初始化 Firebase
@@ -137,54 +142,55 @@
     }
     const db = firebase.database();
 
-    let aquariumData = null;
-    let currentDataType = '';
+    // 2. 將變數綁定在 window 上，確保點擊 Hotspot 時能全局存取
+    window.aquariumData = null;
+    window.currentDataType = '';
 
-    // 4. 即時監聽 /aquarium 節點數據
+    // 3. 即時監聽 /aquarium 節點
     db.ref('/aquarium').on('value', (snapshot) => {
-      aquariumData = snapshot.val();
-      console.log("成功取得 Firebase 最新數據：", aquariumData);
+      window.aquariumData = snapshot.val();
+      console.log("Firebase 數據已更新：", window.aquariumData);
       
-      // 如果視窗處於開啟狀態，同步即時更新畫面數據
-      if (document.getElementById('popup').style.display === 'block') {
+      // 如果彈出視窗正在顯示，同步刷新數據
+      const popup = document.getElementById('popup');
+      if (popup && popup.style.display === 'block') {
         updatePopupUI();
       }
-    }, (error) => {
-      console.error("Firebase 讀取失敗，原因：", error);
     });
 
-    // 5. 點擊不同 Hotspot 顯示對應數據面板
-    function showData(type) {
-      currentDataType = type;
+    // 4. 點擊 Hotspot 按鈕時執行的函數
+    window.showData = function(type) {
+      window.currentDataType = type;
       document.getElementById('popup').style.display = 'block';
       updatePopupUI();
-    }
+    };
 
-    // 更新視窗內部的 HTML 內容
+    // 5. 渲染視窗文字內容
     function updatePopupUI() {
       const titleEl = document.getElementById('popup-title');
       const contentEl = document.getElementById('popup-content');
+      const data = window.aquariumData;
 
-      if (!aquariumData) {
+      if (!data) {
         titleEl.innerText = '⚠️ 提示';
-        contentEl.innerText = '正在等待 Firebase 數據傳輸...';
+        contentEl.innerText = '正在等待 Firebase 數據...';
         return;
       }
 
-      if (currentDataType === 'bask_temp') {
+      if (window.currentDataType === 'bask_temp') {
         titleEl.innerText = '☀️ 曬台溫度感應器';
-        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${aquariumData.bask_temp ?? '--'}</span> °C`;
+        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${data.bask_temp ?? '--'}</span> °C`;
       } 
-      else if (currentDataType === 'fan_humidity') {
+      else if (window.currentDataType === 'fan_humidity') {
         titleEl.innerText = '🌀 風扇與濕度狀態';
         contentEl.innerHTML = `
-          環境濕度：<b style="color:#00e5ff">${aquariumData.humidity ?? '--'} %</b><br>
-          風扇狀態：<b style="color:#00e5ff">${aquariumData.fan_status ?? '--'}</b>
+          環境濕度：<b style="color:#00e5ff">${data.humidity ?? '--'} %</b><br>
+          風扇狀態：<b style="color:#00e5ff">${data.fan_status ?? '--'}</b>
         `;
       } 
-      else if (currentDataType === 'room_temp') {
+      else if (window.currentDataType === 'room_temp') {
         titleEl.innerText = '🌡️ 房間溫度感應器';
-        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${aquariumData.room_temp ?? '--'}</span> °C`;
+        contentEl.innerHTML = `<span style="font-size:26px; color:#00e5ff; font-weight:bold;">${data.room_temp ?? '--'}</span> °C`;
       }
     }
   </script>
